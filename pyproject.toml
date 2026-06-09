@@ -1,0 +1,30 @@
+[project]
+name = "checkerkit"
+description = "Collection of my helpers for writing (Faust) Attack/Defense checkers"
+readme = "README.md"
+# TODO: Properly set versions (for python and deps)
+# Also if we are requiring 3.11+, then `Unpack` is unnecessary
+# Actually minimal varsion is 3.10 because of `match` statement(s).
+requires-python = ">=3.11"
+authors = [{name = "Hackrrr"}]
+# TODO: Add checkerlib as a dependency?
+dependencies = [
+    "rich", # TODO: Add minimal version
+    "requests", # TODO: Add minimal version
+]
+dynamic = ["version"]
+
+[project.scripts]
+simple-checker-runner = "checkerkit.simple_checker_runner:main"
+
+[build-system]
+requires = [
+    "setuptools >= 64.0.0", # Editable install with pyproject.toml
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "checkerkit.__version__"}
+
+[tool.isort]
+profile = "black"
