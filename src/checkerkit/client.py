@@ -7,7 +7,7 @@ import requests
 import requests.structures
 from ctf_gameserver.checkerlib.lib import CheckResult, _is_conn_error
 
-from . import CheckStatus, check, check_eq, fail, randbool
+from . import CheckStatus, check, check_eq, fail, randbool, random_user_agent
 from .conn import Conn
 
 __all__ = [
@@ -172,9 +172,7 @@ class HTTPClient:
 
         # Let's make User-Agent filtering a little bit harder...
         if randbool(0.2):
-            session.headers["User-Agent"] = (
-                f"python-requests/2.{random.randint(_requests_version[1]-9,_requests_version[1]+1)}.{random.randint(0,2)}"
-            )
+            session.headers["User-Agent"] = random_user_agent(True)
 
         # Let's also make header ordering checking little bit harder...
         if randbool(1 / 3):

@@ -85,12 +85,16 @@ def random_text(
     return o
 
 
-def random_user_agent() -> str:
+def random_user_agent(only_python_requests: bool = False) -> str:
+    import requests
+
+    _requests_version = tuple(map(int, requests.__version__.split(".")))
+
     return (
-        f"python-requests/2.{random.randint(20,32)}.{random.randint(0,2)}"
-        if randbool()
+        f"python-requests/2.{random.randint(_requests_version[1]-9,_requests_version[1]+1)}.{random.randint(0,2)}"
+        if only_python_requests or randbool()
         else (
-            f"curl/8.{random.randint(0,13)}.{random.randint(0,1)}"
+            f"curl/8.{random.randint(0,20)}.{random.randint(0,1)}"
             if randbool()
             else f"curl/7.{random.randint(73,88)}.{random.randint(0,1)}"
         )
