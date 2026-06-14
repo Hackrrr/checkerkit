@@ -228,7 +228,9 @@ class HTTPClient:
             logging.warning("Request succeded after %s retries", current_try)
         return resp
 
+    # TODO: Somehow propage typing annotations from `requests.Request`
     def get(self, endpoint: str, **kwargs) -> requests.Response:
+        endpoint = endpoint.lstrip("/")
         return self.send_request(
             requests.Request("GET", f"{self.base_server_url}/{endpoint}", **kwargs)
         )
@@ -236,6 +238,7 @@ class HTTPClient:
     def post(
         self, endpoint: str, data: dict[str, str] | None, **kwargs
     ) -> requests.Response:
+        endpoint = endpoint.lstrip("/")
         # TODO: Randomize data order?
         if data is not None:
             # One would expect that `requests` would encode it but no...
