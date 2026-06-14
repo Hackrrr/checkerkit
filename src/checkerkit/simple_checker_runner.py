@@ -18,13 +18,13 @@ Checkers are dynamically discovered from files in current directory:
 
 import base64
 import importlib.util
+import inspect
 import json
 import logging
 import os.path
 import pickle
 import sys
 import threading
-import types
 from datetime import datetime, timedelta
 from time import sleep
 from typing import Any, TypeAlias, TypedDict
@@ -85,7 +85,9 @@ def discover_checkers() -> dict[str, type[BaseChecker]]:
     # in night for me to trying to dig into Python internals once more.
     sys.path = [os.path.abspath("."), *sys.path]
 
-    out: dict[str, type[BaseChecker]] = {}
+    # This is list to keep the order.
+    # Although I guess `.listdir()` doesn't need to be deterministic so TODO.
+    checker_classes: list[type[BaseChecker]] = []
 
     for file in os.listdir():
         if not file.startswith("checker") or not file.endswith(".py"):
@@ -100,12 +102,41 @@ def discover_checkers() -> dict[str, type[BaseChecker]]:
         spec.loader.exec_module(module)
 
         for x in module.__dict__.values():
-            if isinstance(x, type) and issubclass(x, BaseChecker):
-                # We assume only one checker per script as it isn't common
-                # to run two different checkers from same file.
-                out[module_name] = x
+            # We care only about BaseChecker subclasses.
+            if not isinstance(x, type) or not issubclass(x, BaseChecker):
+                continue
 
-    return out
+            # We care only about non-abstract classes...
+            if inspect.isabstract(x):
+                continue
+
+            # ... but `BaseChecker` is not `ABC` so we need to check
+            # if it ~~implements~~ overrides all needed methods.
+            if (
+                x.check_flag is BaseChecker.check_flag
+                or x.check_service is BaseChecker.check_service
+                or x.place_flag is BaseChecker.place_flag
+            ):
+                continue
+
+            # We don't want duplicates (which could exists due
+            # to reusing one checker class for another checker).
+            if x in checker_classes:
+                continue
+
+            checker_classes.append(x)
+
+    # If checker class names are unique per checker, then use them
+    if len(checker_classes) == len({x.__name__ for x in checker_classes}):
+        return {x.__name__: x for x in checker_classes}
+
+    # If checker module names are unique per checker, then use them
+    if len(checker_classes) == len({x.__module__ for x in checker_classes}):
+        return {x.__module__: x for x in checker_classes}
+
+    # If none above, then we simply create "checker-0", "checker-1", ...
+    rich.print("WARNING: Couldn't determine names for checkers, fallback to counter")
+    return {f"checker-{i}": x for i, x in enumerate(checker_classes)}
 
 
 class AttackData(TypedDict):
