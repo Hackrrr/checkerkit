@@ -94,6 +94,10 @@ def discover_checkers() -> dict[str, type[BaseChecker]]:
             continue
 
         module_name = file.removesuffix(".py")
+
+        # By of Python magic, don't modify this unless are you absolutely sure
+        # you won't break any use case (like imports of other scripts from the
+        # directory). 
         spec = importlib.util.spec_from_file_location(module_name, file)
         assert spec is not None
         assert spec.loader is not None

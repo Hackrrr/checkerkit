@@ -34,7 +34,9 @@ def randstr(
         length = random.randint(*length)
     return "".join(random.choices(chars + extra, k=length))
 
-
+# TODO: Rename (to `randtext()`)?
+# TBH I like "random_*" much more but I would hate writing `random_bool`
+# or `random_string` everytime I need them...
 def random_text(
     length: int | tuple[int, int],
     *,

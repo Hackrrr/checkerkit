@@ -1,5 +1,5 @@
 # Checkerkit
-This project is a collection of my helpers and utilities for writing an Attack/Defense CTF checkers. It is primarly intended for the Faust CTF platform but I believe you can make use of it even for other platforms... Or you can use this even for completely different things than the A/D checkers!
+This project is a collection of my helpers and utilities for writing an Attack/Defense CTF checkers. It is primarly intended for the Faust CTF platform but I believe you can make use of it even for other platforms... You can also use this for A/D exploits because how better look like a checker than using the functions that checker uses? Or you can use this even for completely different things than the A/D!
 
 Quick start - run `pip install git+https://github.com/Hackrrr/checkerkit.git` ~~and have a quick look at [example](#full-example)~~ (not yet since I didn't wrote it yet... but there is some small example at the bottom of this README for time of being).
 
@@ -16,7 +16,7 @@ For sake of brevity I assume familarity with relevant concepts. Tthat is - you a
 
 Features of this module can be categoried into serveral categories:
 - [`CheckResult`](#checkresult) - Handling of the checker result and checker messages
-- [`fail()` and checker messsages](#fail-fail_context-and-checker-messages) - Helpers for checker messages and bit of advice for checker messages in general 
+- [`fail()` and checker messsages](#fail-fail_context-and-checker-messages) - Helpers for checker messages and bit of advice for checker messages in general
 - [Checks / Asserts](#checks--asserts) - Predefined set of "asserts" which can be used to check expected output
 - [Clients](#clients) - classes for TCP and HTTP communication
 - [Random](#random) - functions for randomizing the checker
@@ -89,7 +89,7 @@ def do_command_efg():
     return recv_line()
 ```
 
-The checker message from `fail()` call isn't much helpful if `recv_line()` is called from multiple places... does it mean that "ABC" command or "EFG" command is broken? Problem is much clearer in this simple example (especially when we don't show the "service side of the code" which can be much more complex) but one can imagine this being much larger problem when the source code is much bigger. Therefore it could be good idea to provide an information about a context in which the error/fail happened. `fail_context()` context manager solves this problem: 
+The checker message from `fail()` call isn't much helpful if `recv_line()` is called from multiple places... does it mean that "ABC" command or "EFG" command is broken? Problem is much clearer in this simple example (especially when we don't show the "service side of the code" which can be much more complex) but one can imagine this being much larger problem when the source code is much bigger. Therefore it could be good idea to provide an information about a context in which the error/fail happened. `fail_context()` context manager solves this problem:
 ```py
 from checkerkit import fail_context
 
@@ -113,7 +113,7 @@ def do_command_abc():
 
 A few final notes about the checker messages:
 - Beware of what you put there as everything you put there is basically a "public information" which can anyone see (to be more explicit: even the attackers can see that). If you decide to put e.g. some ID of a request to it (so defenders can exactly see which request was/is broken), then the ID shouldn't be useable as part of an attack/exploit.
-- Beware that too much information could, in theory, lead to superman defenses - if you disclose what exactly checker does, then it may become trivial to whitelist only that few operations and block everything else. IMHO this is not a problem unless you are putting exact payloads that checker sends as checker messages. 
+- Beware that too much information could, in theory, lead to superman defenses - if you disclose what exactly checker does, then it may become trivial to whitelist only that few operations and block everything else. IMHO this is not a problem unless you are putting exact payloads that checker sends as checker messages.
 
 ## Checks / Asserts
 One of the checker's job is to validate funcionality of the service. At is core, checkers basically act as an unit tests for the application/service. Therefore it would be nice to have some functions for validating the output.
@@ -193,7 +193,7 @@ def check_random_service(host: str):
 `TCPClient` acts similar to `remote()` from `pwntools`:
 
 ```py
-from checkerkit import TCPClient
+from checkerkit.client import TCPClient
 
 client = TCPClient("localhost", 1337)
 client.recv_until("Here is your output: ")
@@ -210,7 +210,7 @@ The most useful method of `TCPClient` is IMHO `.recv_line()` which can take an a
 At its core, `HTTPClient` is "just" a wrapper around `requests` module:
 
 ```py
-from checkerkit import HTTPClient
+from checkerkit.client import HTTPClient
 
 client = HTTPClient("localhost", 1337)
 resp = client.get("/") # Returns `requests.Response`
@@ -230,16 +230,57 @@ The main reason for `HTTPClient` is checker obfuscation. `HTTPClient` does follo
 - Optional keep alive shenanings (`initial_keep_alive` parameter in constructor) to force requests into separate TCP connections
 
 ## Random
-<!-- TODO: "Random" -->
-**TODO**
+Module provides serveral functions for randomizing the checker.
+
+The most basic one is `randbool()` and it does exactly what one would expect - returns either `True` and `False`. By default it picks `True` with probability of `0.5` but you can override it by passing probability (of `True`) as an argument:
+```py
+from checkerkit import randbool
+
+def lucky_check():
+    if randbool():
+        fail("Unlucky, checker doesn't like you")
+    if randbool(0.01):
+        fail("Very unlucky, checker really doesn't like you")
+```
+
+Next we have `randstr()` function and it (yet again) does exactly what you think - it generates a random string of target length. By default, it generates string from charset `string.ascii_letters + string.digits`. `randstr()` takes up to three arguments: first is length of random string (which can be either exact length or length as tuple `(MIN_LENGTH, MAX_LENGTH)`), second are "extra characters" to add to the base charset and third argument is used "base charset" as a whole. "Final" charset used for the string generation is created by joing the base charset together with extra chars so you probably won't use both extra chars and base charset arguments at once. The reasoning behind extra chars is that most of the time you will want to "only" extend the default charset (ASCII letters and digits) and it would be bit annoying to always write `string.ascii_letters + string.digits`. You can also use extra chars argument to increase the probablity of some characters.
+
+```py
+from checkerkit import randstr
+from checkerkit.client import HTTPClient
+
+def create_note():
+    client = HTTPClient("localhost", 1337)
+
+    user = randstr((10, 12))
+    password = randstr(16)
+
+    client.post("/register", {"user": user, "pass": password})
+    client.post("/login", {"user": user, "pass": password})
+
+    note = randstr(100, " "*10) # Random string with higher probability of space
+    client.post("/note/create", {"content": note})
+```
+
+Final useful function is `random_text()` which is bit more complex `randstr()`. Its purpose is to generate something that at least somehow reassembles "human-looking" text. Most notably - it tries to construct words and sentences. `random_text()` have only one mandatory parameter - length of generated text. It can be either exact number or range (like it is for `randstr()`). `random_text()` have several optional (keyword) parameters which can be used for tuning its output but I will skip them in this README for simplicity (see docstring of `random_text()` for more details):
+
+```py
+from checkerkit import random_text
+
+def create_note():
+    # ...
+
+    note = random_text(100, do_digits=False)
+    client.post("/note/create", {"content": note})
+```
 
 ## Simple checker runner
-<!-- TODO: Simple checker runner -->
-**TODO**
+`simple_checker_runner` is a command line utility which runs checkers in a loop simulating the checker "deployment". To start it simpli run `simple_checker_runner <TARGET_HOST>` inside the directory with the checker script(s).
+
+First thing it needs to do is to find a checkers to run. It does it by looking at all files from currect directory matching the wildcard `checker*.py`, executing it and taking all classes which implement `ctf_gameserver.checkerlib.lib.BaseChecker` class (and which are not abstract). After obtaining the checker (classes), it runs in a loop, calling `ctf_gameserver.checkerlib.lib._run_check_steps()` (= calling `.place_flag()`, `.check_service()` and `.check_flag()` methods) for each checker. Two files are (re)generated after each loop: `./attack.json` containing a flag IDs for (last 5 ticks) and `./service_state.json` containing check(er) results (including checker messages).
 
 
-# Full example
-**TODO**
+<!-- # Full example -->
 <!-- TODO: "Complete example" = my usual usage -->
 
 
@@ -308,7 +349,7 @@ if __name__ == "__main__":
 
 IMHO it is quite long but unfortunatelly this is probably as short checker as you can get. When you use this project/module, you won't get it much shorter. But once your checker gets more complex, you will find that is is getting quickly out of hand and then this module helps a lot.
 
-Let's say you need to do some kinda of authentication upon connection and so we modify `connect()` function to also take an another argument. But someone tried to patch the service and failed and so authentication will be unsucessful. "Goal" of the checker in such case is to return `CheckResult.FAULTY` value from the checker methods. The question - how to return that from the `connect()` function? You could implement this in several ways, the most simple one is following: 
+Let's say you need to do some kinda of authentication upon connection and so we modify `connect()` function to also take an another argument. But someone tried to patch the service and failed and so authentication will be unsucessful. "Goal" of the checker in such case is to return `CheckResult.FAULTY` value from the checker methods. The question - how to return that from the `connect()` function? You could implement this in several ways, the most simple one is following:
 
 ```py
 class Checker(checkerlib.BaseChecker):

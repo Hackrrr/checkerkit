@@ -15,6 +15,8 @@ __all__ = [
     "HTTPClient",
 ]
 
+# TODO: Some of the FAULTY states should be probably "DOWN" instead
+
 UNKNOWN_RESPONSE = "Unexpected/Mumbled response"
 RETRY_WAIT_TIME = 3
 
