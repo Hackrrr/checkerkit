@@ -199,12 +199,12 @@ class HTTPClient:
         return f"http://{self.host}:{self.port}"
 
     @fail_on_timeout_exception
-    def send_request(self, req: requests.Request) -> requests.Response:
+    def send_request(self, req: requests.Request, **kwargs) -> requests.Response:
         logging.debug("Sending request: %s", repr_req(req, 50))
         current_try = 0
         while True:
             try:
-                resp = self.session.send(self.session.prepare_request(req))
+                resp = self.session.send(self.session.prepare_request(req), **kwargs)
             except Exception as e:
                 if current_try == self.retries:
                     # Maximum retries reached
@@ -231,14 +231,22 @@ class HTTPClient:
         return resp
 
     # TODO: Somehow propage typing annotations from `requests.Request`
-    def get(self, endpoint: str, **kwargs) -> requests.Response:
+    def get(
+        self, endpoint: str, *, allow_redirects: bool = True, **kwargs
+    ) -> requests.Response:
         endpoint = endpoint.lstrip("/")
         return self.send_request(
-            requests.Request("GET", f"{self.base_server_url}/{endpoint}", **kwargs)
+            requests.Request("GET", f"{self.base_server_url}/{endpoint}", **kwargs),
+            allow_redirects=allow_redirects,
         )
 
     def post(
-        self, endpoint: str, data: dict[str, str] | None, **kwargs
+        self,
+        endpoint: str,
+        data: dict[str, str] | None,
+        *,
+        allow_redirects: bool = True,
+        **kwargs,
     ) -> requests.Response:
         endpoint = endpoint.lstrip("/")
         # TODO: Randomize data order?
@@ -251,5 +259,6 @@ class HTTPClient:
         return self.send_request(
             requests.Request(
                 "POST", f"{self.base_server_url}/{endpoint}", data=data, **kwargs
-            )
+            ),
+            allow_redirects=allow_redirects,
         )
